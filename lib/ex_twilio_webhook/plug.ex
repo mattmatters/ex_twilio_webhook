@@ -30,6 +30,14 @@ defmodule ExTwilioWebhook.Plug do
     is equal to the pattern. When given a regular expression, it will match if
     the regular expression matches the `request_path`.
 
+    The regular expression can be provided several ways:
+
+    * Precompiled, ex: `%Regex{}`, this will not work if the plug is intializing
+    at compile time on later versions of Erlang.
+    * A tuple indicating the expression to compile {:re, uncompiled_regex}
+
+    _NOTE: If the plug is initializing at compile time running
+
   - `secret`: Twilio secret. The secret can be provided as a string, a list of strings,
     an `{m, f, a}` tuple, or an anonymous function of arity 0 or 1.
     When given a 1-arity function, the function will be called with the value
@@ -101,7 +109,7 @@ defmodule ExTwilioWebhook.Plug do
   end
 
   defp get_provider_req_header(conn) do
-    get_req_header(conn, "x-twilio-signature") ||  get_req_header(conn, "x-signalwire-signature")
+    get_req_header(conn, "x-twilio-signature") || get_req_header(conn, "x-signalwire-signature")
   end
 
   def validate_webhook(conn, _settings), do: deny_access(conn)
@@ -152,6 +160,10 @@ defmodule ExTwilioWebhook.Plug do
 
   defp validate_path_pattern(string) when is_binary(string), do: string
   defp validate_path_pattern(%Regex{} = regex), do: regex
+  defp validate_path_pattern({:re, regex}) when is_binary(regex), do: Regex.compile!(regex)
+
+  defp validate_path_pattern({:re, regex, opts}) when is_binary(regex),
+    do: Regex.compile!(regex, opts)
 
   defp validate_path_pattern(value) do
     raise """
